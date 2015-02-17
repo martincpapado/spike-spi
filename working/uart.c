@@ -1,0 +1,123 @@
+#include <stdio.h>
+#include <stdint.h>
+   
+
+//#define IO_BASE 0xFFFFFFFFFFFC1000 // or whatever
+#define IO_BASE 0x00000000000C1000
+//#define IO_BASE 0xFFFFFFFFFFFFFF00
+
+
+#define U_SEND    0x10
+#define U_RECEIVE 0x14
+#define U_CONTROL 0x18
+#define U_STATUS  0x1C
+
+#define  UART_SEND()      (*((volatile char *)(IO_BASE+U_SEND)))		//0xFFFC1010
+#define  UART_RECEIVE()   (*((volatile char *)(IO_BASE+U_RECEIVE)))	//0xFFFC1014
+#define  UART_CONTROL()   (*((volatile char *)(IO_BASE+U_CONTROL)))	//0xFFFC1018
+#define  UART_STATUS()    (*((volatile char *)(IO_BASE+U_STATUS)))	//0xFFFC101C
+
+#define UART_STATUS_RX_EMPTY (0x80)
+#define UART_STATUS_TX_EMPTY (0x40)
+
+#define UART_CONTROL_RX_INT_ENABLE (0x20)
+#define UART_CONTROL_TX_INT_ENABLE (0x10)
+
+
+// Polled I/O routines:
+
+  char uart_polled_read()
+  {
+     while (UART_STATUS() &
+        UART_STATUS_RX_EMPTY) continue;
+     return UART_RECEIVE();
+  }
+
+//spins while the device is still busy with any data written previously
+  uart_polled_write(char d)
+  {
+     while (!(UART_STATUS() & 
+       UART_STATUS_TX_EMPTY)) continue;
+     UART_SEND() = d;
+  }
+
+// Interrupt driven receive routine:
+// Circular FIFO buffers.
+char rx_buffer[256], tx_buffer[256];
+int rx_inptr, rx_outptr, tx_inptr, tx_outptr;
+
+void uart_reset()
+{
+  rx_inptr = 0;
+  rx_outptr = 0;
+  tx_inptr = 0;
+  tx_outptr = 0;
+  UART_CONTROL() |= UART_CONTROL_RX_INT_ENABLE; //bitwise or assignment
+}
+
+
+char uart_read()
+{
+  while (rx_inptr==rx_outptr) wait();
+  char r = rx_buffer[rx_outptr];
+  rx_outptr = (rx_outptr + 1) & 255;
+  return r;
+}
+
+// Interrupt service routine:
+// Uart ISR: this is called from a short assembler stub placed at the
+// hardware interrupt vector location.  The assembler stub sets up the
+// stack pointer and frame pointer and saves any registers that might 
+// be in use in non-interrupt contexts.
+char uart_rx_isr()  // interrupt service routine
+{
+  while (1)
+    {
+      if (UART_STATUS() & UART_STATUS_RX_EMPTY) return;
+      rx_buffer[rx_inptr] = UART_RECEIVE();
+      rx_inptr = (rx_inptr + 1) & 255;
+    }
+}
+// on return from the ISR, the processor context is restored, including
+// any interrupt mask flag in the main processor control word. 
+
+
+
+//
+uart_write(char c)
+{
+  while (((tx_inptr+1) & 255)==tx_outptr) wait();
+  tx_buffer[tx_inptr] = c;
+  tx_inptr = (tx_inptr + 1) & 255;
+
+  UART_CONTROL() |= UART_CONTROL_TX_INT_ENABLE;  
+}
+
+// Typically the transmit and receive ISRs are not separate.  Instead,
+// all forms of service request are checked by one entry point in the
+// C device driver code.
+char uart_tx_isr()
+{
+  while (tx_inptr != tx_outptr) // There may be an output FIFO, so send as many bytes as possible.
+    {
+      if (!(UART_STATUS() & UART_STATUS_TX_EMPTY)) return; // Return with tx interrupt enabled.
+      UART_SEND() = tx_buffer[tx_outptr];
+      tx_outptr = (tx_outptr + 1) & 255;
+    }
+  UART_CONTROL() &= ~UART_CONTROL_TX_INT_ENABLE;  // Return with tx interrupt disabled.
+}
+
+ int main(void) { 
+ 	printf("\nRx Received:"); 
+ 	char c=uart_polled_read();
+ 	printf(" %c\n",c);
+ 	
+ 	char d = 0x62;
+ 	
+ 	uart_polled_write(d);
+ 	
+ 	
+ 	
+ 	return 0; 
+ 	
+ }

@@ -1,0 +1,30 @@
+sb:
+
+if ((RS1 + insn.s_imm())==0x00000000000c1010)
+{
+	printf ("Tx Sent: %c\n", RS2);
+//	WRITE_RD(0x40);
+}
+//if ((RS2)==0x00000000000c1010)
+else
+	//printf ("\nHere");
+	MMU.store_uint8(RS1 + insn.s_imm(), RS2);
+	
+	/*************************************************************************/
+	
+	lbu:
+	
+	if ((RS1 + insn.i_imm())==0x00000000000c101c)
+{
+//	printf ("\nFOUND");
+	WRITE_RD(0x40);
+}
+else if ((RS1 + insn.i_imm())==0x00000000000c1014)
+{
+//	printf ("\nFOUND");
+	WRITE_RD(0x61);
+}
+else
+	WRITE_RD(MMU.load_uint8(RS1 + insn.i_imm()));
+	
+	

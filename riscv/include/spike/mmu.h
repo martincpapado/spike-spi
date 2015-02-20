@@ -40,32 +40,86 @@ class mmu_t
 public:
   mmu_t(char* _mem, size_t _memsz);
   ~mmu_t();
-  
-  //SPI SLAVE//
+
+  //SPI SLAVE VARIABLES//
   char spi_miso=0x61;
   char spi_miso_temp=0x00;
   int bit_counter=0;
-  //SPI SLAVE END//
   
-  //SPI_SLAVE//
+  //MCP3008//
+  int ch[8]={0x120,0x271,0x312,0x103,0x204,0x305,0x106,0x237};
+  //ch[0]=0x100;
+  //ch[1]=0x201;
+  //ch[2]=0x302;
+  //ch[3]=0x103;
+  //ch[4]=0x204;
+  //ch[5]=0x305;
+  //ch[6]=0x106;
+  //ch[7]=0x207;
+  
+  int ch_sel=0x00;
+  
+  //bool flag_start = false;
+  bool first_byte = false;
+  bool second_byte = false;
+  //bool third_byte = false;
+  bool diff=false;
+  //SPI SLAVE VARIABLES END//
+  
+  //SPI SLAVE FUNCTIONS//
 void spi_receive(char c)
   {
   	spi_miso_temp = spi_miso;
   	spi_miso<<= 1;
   	spi_miso |= c;
-  	bit_counter++;		
+  	//bit_counter++;		
   }
+ 
+void update_clk(char clk)
+{
+	if (clk)
+		bit_counter++;;
+}
   
 char spi_send()
   {
   	if (bit_counter == 8)
   	{
-  		printf("Slave Received: %c\n", spi_miso);
-  		spi_miso=0x61;
-  		//spi_miso_temp=0x00;
-  		bit_counter=0;
+  		printf("Slave Received: %x\n", spi_miso);
+  		if (spi_miso==0x01 && !first_byte && !second_byte)
+  		{
+  			//flag_start=true;
+  			first_byte=true;
+  			spi_miso=0x00;
+  			bit_counter=0;
+  		}
+  		else if (first_byte)
+  		{
+  			first_byte=false;
+  			second_byte=true;
+  			spi_miso=0xff &(ch[ch_sel]);
+  			bit_counter=0;
+  		}
+  		else //if (second_byte)
+  		{
+  			first_byte=false;
+  			second_byte=false;
+  			spi_miso=0x00;
+  			bit_counter=0;
+  		}
+  		//spi_miso=0x61;
+  		//bit_counter=0;
   	}
-  	return spi_miso_temp;	
+  	if ((bit_counter == 4)&&(first_byte))
+  	{
+  		diff=(spi_miso&0x08);
+  		ch_sel=(spi_miso&0x07);
+  		spi_miso=0xff & (ch[ch_sel] >> 4);
+  	}
+  	if (spi_miso_temp & 0x80)
+          return (0x01);
+      else
+          return (0x00);	
   }
   
  //SPI_SLAVE_END//

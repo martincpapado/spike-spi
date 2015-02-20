@@ -12,6 +12,7 @@ if ((RS1 + insn.s_imm())==0x00000000000c101c)
 else if ((RS1 + insn.s_imm())==0x00000000000c1010)
 {
 	printf ("Received bit=%x\n", RS2);
+	MMU.spi_receive(RS2);
 }
 
 else if ((RS1 + insn.s_imm())==0x00000000000c1018)
@@ -26,4 +27,52 @@ else
 	/*************************************************************************/
 	
 	lbu:
+//if ((RS1 + insn.i_imm())==0x00000000000c101c)
+//{
+//	printf ("\nFOUND");
+//	WRITE_RD(0x40);
+//}
+if ((RS1 + insn.i_imm())==0x00000000000c1014)
+{
+	//printf ("\nFOUND");
+	WRITE_RD(MMU.spi_send());
+}
+else
+	WRITE_RD(MMU.load_uint8(RS1 + insn.i_imm()));
+	
+	
+/*****************************************************************************/
+mmu:
+ 
+  //SPI SLAVE//
+  char spi_miso=0x61;
+  char spi_miso_temp=0x00;
+  int bit_counter=0;
+  //SPI SLAVE END//
+  
+  //SPI_SLAVE//
+void spi_receive(char c)
+  {
+  	spi_miso_temp = spi_miso;
+  	spi_miso<<= 1;
+  	spi_miso |= c;
+  	bit_counter++;		
+  }
+  
+char spi_send()
+  {
+  	if (bit_counter == 8)
+  	{
+  		printf("Slave Received: %x\n", spi_miso);
+  		spi_miso=0x61;
+  		//spi_miso_temp=0x00;
+  		bit_counter=0;
+  	}
+  	if (spi_miso_temp & 0x80)
+          return (0x01);
+      else
+          return (0x00);	
+  }
+  
+ //SPI_SLAVE_END//
 

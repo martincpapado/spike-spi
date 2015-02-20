@@ -28,6 +28,19 @@
 #define SPI_MODE_2 (0x88)
 #define SPI_MODE_3 (0x8C)
 
+char inverse(char byte)
+{
+	char mask=0x01, result=0x00;
+	while (mask)
+	{
+		if (byte & 0x80)
+			result |= mask;
+		mask <<= 1;
+		byte <<= 1;
+	}
+	return (result);
+}
+
 char spi_transfer(char d)
 {
 	char c=d;
@@ -49,13 +62,15 @@ char spi_transfer(char d)
  
     // read MISO
     //if (miso_ != NO_PIN)
-    c |= SPI_MISO();
+    //c |= SPI_MISO();
  
     // clock high
     SPI_CLK()=0x01;
     
     // delay between rise and fall of clock
     //usleep(1000);
+    
+    c |= SPI_MISO();
  
     // clock low
     SPI_CLK()=0x00;
@@ -73,11 +88,15 @@ int main(void) {
  	//char c=uart_polled_read();
  //	printf(" %c\n",c);
  	
- 	char d = 0x08;
- 	
- 	//uart_polled_write(d);
+ 	char d = 0x01;
  	char c = spi_transfer(d); 
- 	printf("MISO sent: %c\n",c);
+ 	printf("MISO sent: %x\n",c);
+ 	d = 0x50;
+ 	c = spi_transfer(d);
+ 	printf("MISO sent: %x\n",c);
+ 	c = spi_transfer(d);
+ 	printf("MISO sent: %x\n",c);
+ 	
  	
  	return 0; 
  	

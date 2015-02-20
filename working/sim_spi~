@@ -1,11 +1,25 @@
 sb:
-
-if ((RS1 + insn.s_imm())==0x00000000000c1010)
+if ((RS1 + insn.s_imm())==0x00000000000c101c)
 {
-	printf ("Tx Sent: %c\n", RS2);
+	printf ("SS=%x\n", RS2);
+	if (RS2 == 0x00)
+		printf ("SPI Transfer Initiated\n");
+	if (RS2 == 0x01)
+		printf ("SPI Transfer Finished\n");
 //	WRITE_RD(0x40);
 }
-//if ((RS2)==0x00000000000c1010)
+
+else if ((RS1 + insn.s_imm())==0x00000000000c1010)
+{
+	printf ("Received bit=%x\n", RS2);
+	MMU.spi_receive(RS2);
+}
+
+else if ((RS1 + insn.s_imm())==0x00000000000c1018)
+{
+	printf ("Clock=%x\n", RS2);
+}
+
 else
 	//printf ("\nHere");
 	MMU.store_uint8(RS1 + insn.s_imm(), RS2);
@@ -13,18 +27,19 @@ else
 	/*************************************************************************/
 	
 	lbu:
-	
-if ((RS1 + insn.i_imm())==0x00000000000c101c)
-{
+//if ((RS1 + insn.i_imm())==0x00000000000c101c)
+//{
 //	printf ("\nFOUND");
-	WRITE_RD(0x40);
-}
-else if ((RS1 + insn.i_imm())==0x00000000000c1014)
+//	WRITE_RD(0x40);
+//}
+if ((RS1 + insn.i_imm())==0x00000000000c1014)
 {
-//	printf ("\nFOUND");
-	WRITE_RD(0x61);
+	//printf ("\nFOUND");
+	WRITE_RD(MMU.spi_send());
 }
 else
 	WRITE_RD(MMU.load_uint8(RS1 + insn.i_imm()));
 	
 	
+/*****************************************************************************/
+
